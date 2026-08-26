@@ -1,0 +1,23 @@
+dn: ou=users,dc=company.com
+objectClass: organizationalUnit
+ou: users
+
+dn: cn=john.doe,ou=users,dc=company.com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: john.doe
+sn: Doe
+givenName: John
+mail: john.doe@company.com
+userPassword: InitialSecurePassword2026!
+
+dn: cn=alex.admin,ou=users,dc=company.com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+cn: alex.admin
+sn: Admin
+givenName: Alex
+mail: alex.admin@company.com
+userPassword: InitialSecurePassword2026!

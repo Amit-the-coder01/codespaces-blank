@@ -1,0 +1,89 @@
+import psycopg2
+from ldap3 import Server, Connection, ALL, MODIFY_REPLACE
+
+# --- CONFIGURATION ---
+DB_CONFIG = {
+    "host": "localhost", # Change to "hr-db" if running inside Docker network
+    "database": "hr_database",
+    "user": "hr_admin",
+    "password": "HR_Secure_Password_2026"
+}
+
+LDAP_SERVER = "ldap://localhost:389" # Change to "openldap" if running inside Docker network
+LDAP_USER = "cn=admin,dc=corporate,dc=local"
+LDAP_PASSWORD = "LDAP_Admin_Password_2026"
+LDAP_SEARCH_BASE = "dc=corporate,dc=local"
+
+def fetch_hr_employees():
+    """Fetches active employees from the HR database source of truth."""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+        cursor.execute("SELECT first_name, last_name, email, username, department FROM employees WHERE status = 'ACTIVE';")
+        employees = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return employees
+    except Exception as e:
+        print(f"[HR DB Error] Failed to fetch data: {e}")
+        return []
+
+def sync_to_ldap(employees):
+    """Syncs HR database identities into the OpenLDAP directory."""
+    if not employees:
+        print("[Sync] No records to sync.")
+        return
+
+    server = Server(LDAP_SERVER, get_info=ALL)
+    conn = Connection(server, user=LDAP_USER, password=LDAP_PASSWORD, auto_bind=True)
+
+    # 1. Ensure Organizational Unit (OU) for users exists
+    ou_dn = f"ou=users,{LDAP_SEARCH_BASE}"
+    conn.search(LDAP_SEARCH_BASE, f"(objectClass=organizationalUnit)", search_scope='LEVEL', attributes=['ou'])
+    existing_ous = [entry.ou.value for entry in conn.entries if 'ou' in entry]
+    
+    if "users" not in existing_ous:
+        conn.add(ou_dn, object_class=['top', 'organizationalUnit'], attributes={'ou': 'users'})
+        print("[LDAP] Created Organizational Unit: ou=users")
+
+    # 2. Upsert identities into LDAP
+    for emp in employees:
+        first_name, last_name, email, username, department = emp
+        user_dn = f"cn={username},{ou_dn}"
+        
+        # Check if user already exists
+        conn.search(ou_dn, f"(cn={username})", attributes=['cn'])
+        
+        attributes = {
+            
+            'sn': last_name,
+            'givenName': first_name,
+            'mail': email,
+            'uid': username,
+            'ou': department,
+            'userPassword': 'TemporaryPassword123!' # Base temp password for compliance
+        }
+
+        if len(conn.entries) == 0:
+            # User does not exist -> Create (Joiner Process)
+            if conn.add(user_dn, object_class=['top', 'person', 'organizationalPerson', 'inetOrgPerson'], attributes=attributes):
+                print(f"[Sync] Provisioned new user: {username} ({email})")
+            else:
+                print(f"[LDAP Error] Failed to add user {username}: {conn.result}")
+        else:
+            # User exists -> Update attributes if changed (Mover Process)
+            # Modifying attributes to handle the UPN/Email sync issue context safely
+            modifications = {
+                'mail': [(MODIFY_REPLACE, [email])],
+                'ou': [(MODIFY_REPLACE, [department])]
+            }
+            conn.modify(user_dn, modifications)
+            print(f"[Sync] Updated existing user context: {username}")
+
+    conn.unbind()
+
+if __name__ == "__main__":
+    print("[Identity Sync Engine] Starting HR to LDAP lifecycle execution...")
+    hr_data = fetch_hr_employees()
+    sync_to_ldap(hr_data)
+    print("[Identity Sync Engine] Synchronization execution finished.")
