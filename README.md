@@ -3,23 +3,7 @@
 The purpose of this project is to model an automated enterprise **Joiner-Mover-Leaver (JML)** identity pipeline, transition its underlying infrastructure from insecure configurations to a hardened **Zero-Trust Network Architecture**, and systematically perform **Failure-Mode Testing** to validate technical controls against **ISO/IEC 27001 Annex A.9 (Access Control) ** and **CISA Domain 5 (Protection of Information Assets) ** benchmarks.
 ---
 ## System Topology & Identity Lifecyle Data Flow
-[Flask HR App UI] ── (Least-Privilege String) ──> [PostgreSQL DB] (Source of Truth)                                                       │                                                  
-(TLS 1.3 / Port 5432)                                                 
-                  │                                                        
-                  v                                      
- [iam_sync_worker.py] (Python Daemon)   
-                  │                                                 
-     (Secure LDAPS / Port 636)                                      
-                  │                                                       
-                  v                                         
-   [OpenLDAP Directory Engine]                                                                                                  (User Federation)                                                      
-                  │                                                       
-                  v                                          
-    [Keycloak Gateway (IdP)]                                                                                           
-    (OIDC Token via PKCE S256)                                              
-                  │                                                        
-                  v                                
-   [Grafana Application Workspace]
+[Flask HR App UI] ── (Least-Privilege String) ──> [PostgreSQL DB] (Source of Truth) ----> (TLS 1.3 / Port 5432)        ----> [iam_sync_worker.py] (Python Daemon) ----> (Secure LDAPS / Port 636) ----> [OpenLDAP Directory Engine] --> (User Federation) ----> [Keycloak Gateway (IdP)]  ----> (OIDC Token via PKCE S256) ----> [Grafana Application Workspace]
 
 1. **Identity Ingestion (Joiner):** HR provisions an identity record via a custom **Python Flask** frontend, creating an authorized record inside a **PostgreSQL** storage layer.2. **Automated Directory Sync:** An asynchronous background **Python Worker Daemon (`ldap3`)** processes real-time mutations in the database, automatically provisioning/deprovisioning matching accounts inside the centralized directory service.3. **Identity Provider Federation:** An enterprise Identity Provider (**Keycloak**) ingests users from the directory layer via native User Federation configurations.4. **Federated Single Sign-On (SSO):** Downstream client applications (**Grafana**) authenticate users securely using an **OpenID Connect (OIDC)** token handshake.
 ---
