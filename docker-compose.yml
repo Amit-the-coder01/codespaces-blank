@@ -18,19 +18,27 @@ services:
 
   # 2. LDAP Directory (OpenLDAP) - Corporate Directory
   openldap:
-    image: osixia/openldap:1.5.0
+    image: osixia/openldap:latest
     container_name: openldap
+    command: --copy-service --loglevel debug
     environment:
-      LDAP_ORGANISATION: "Enterprise IT"
-      LDAP_DOMAIN: "corporate.local"
-      LDAP_ADMIN_PASSWORD: "LDAP_Admin_Password_2026"
-      LDAP_CONFIG_PASSWORD: "LDAP_Config_Password_2026"
+      LDAP_ORGANISATION: Enterprise IT
+      LDAP_DOMAIN: corporate.local
+      LDAP_ADMIN_PASSWORD: LDAP_Admin_Password_2026
+      LDAP_CONFIG_PASSWORD: LDAP_Config_Password_2026
+      LDAP_TLS: "True"
+      LDAP_TLS_CRT_FILENAME: ldap.crt
+      LDAP_TLS_KEY_FILENAME: ldap.key
+      LDAP_TLS_CA_CRT_FILENAME: ca.crt
     ports:
       - "389:389"
       - "636:636"
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
+     # - ./certs/ldap.crt:/container/service/slapd/assets/certs/ldap.crt
+     # - ./certs/ldap.key:/container/service/slapd/assets/certs/ldap.key
+     # - ./certs/ca.crt:/container/service/slapd/assets/certs/ca.crt
     networks:
       - iam-network
 
@@ -51,7 +59,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: keycloak
-    command: ["start-dev","--http-port=8080"]
+    #command: ["start-dev","--http-port=8080"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -62,6 +70,8 @@ services:
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_PROXY: "edge"
       KC_FEATURES: token-exchange
+      #Clean mapping format with colon and hyphen
+      KEYCLOAK_IMPORT: /opt/keycloak/data/import/realm-export.json
     ports:
       - "8080:8080"
     depends_on:
@@ -69,8 +79,8 @@ services:
     networks:
       - iam-network  
     volumes:
-      - ./realm-export.json:/opt/keycloak/data/import/realm.json  
-    
+      - ./keycloak-import:/opt/keycloak/data/import
+    command: start-dev --import-realm
 
   # grafana:
    # image: grafana/grafana:latest
@@ -104,14 +114,49 @@ services:
       - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=EF3puQPcHgfxlg9pWLe7BXlwPVLG6nwc
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
       - GF_SERVER_ROOT_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-3000.app.github.dev/
-      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/master/protocol/openid-connect/auth
-      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/master/protocol/openid-connect/token
-      - GF_AUTH_GENERIC_OAUTH_API_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/master/protocol/openid-connect/userinfo
-
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/corporate/protocol/openid-connect/auth
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/corporate/protocol/openid-connect/token
+      - GF_AUTH_GENERIC_OAUTH_API_URL=https://upgraded-memory-g4rvw9gxgq7qfw77v-8080.app.github.dev/realms/corporate/protocol/openid-connect/userinfo
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=none
     depends_on:
       - keycloak
     networks:
       - iam-network
+  iam-sync-worker:
+    build: .
+    container_name: iam_sync_worker
+    environment:
+      - DB_HOST=hr-db
+      - DB_NAME=hr_database
+      - DB_USER=hr_admin
+      - DB_PASSWORD=HR_Secure_Password_2026
+      - LDAP_SERVER=openldap
+      - LDAP_BIND_DN=cn=admin,dc=corporate,dc=local 
+      - LDAP_BIND_PASSWORD=LDAP_Admin_Password_2026
+    depends_on: 
+      - hr-db
+      - openldap  
+    networks:
+      - iam-network  
+    restart: always
+
+  hr-ui:
+    build:
+      context: ./hr-ui
+      dockerfile: dockerfile.ui
+    container_name: hr_web_ui
+    environment:
+      - DB_HOST=hr-db
+      - DB_NAME=hr_database
+      - DB_USER=hr_admin
+      - DB_PASSWORD=HR_Secure_Password_2026
+    ports:
+      - "5000:5000"
+    depends_on:
+      - hr-db
+    networks:
+      - iam-network 
 
 volumes:
   keycloak_data:

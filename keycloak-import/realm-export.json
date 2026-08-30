@@ -1,6 +1,6 @@
-[ {
+ {
   "id" : "5f85ce78-4148-43ed-9a8c-0d9ca4c7ffa0",
-  "realm" : "master",
+  "realm" : "corporate",
   "displayName" : "Keycloak",
   "displayNameHtml" : "<div class=\"kc-logo-text\"><span>Keycloak</span></div>",
   "notBefore" : 0,
@@ -2032,4 +2032,4 @@
   "clientPolicies" : {
     "policies" : [ ]
   }
-} ]
+} 

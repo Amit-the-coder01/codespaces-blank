@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise HRIS - Identity Control Portal</title>
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-6 space-y-6">
+    
+    <!-- Entry Form Card -->
+    <div class="max-w-md w-full bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
+        <div class="flex items-center justify-center space-x-2 mb-2">
+            <span class="text-2xl">🛡️</span>
+            <h2 class="text-2xl font-bold text-center text-indigo-400">Identity Control Portal</h2>
+        </div>
+        <p class="text-gray-400 text-xs text-center mb-6 tracking-wider uppercase">HRIS Authoritative Source of Truth</p>
+        
+        {% if message %}
+        <div class="mb-4 p-3 bg-indigo-950/60 border border-indigo-500/50 text-indigo-300 rounded text-sm text-center font-medium">
+            {{ message }}
+        </div>
+        {% endif %}
+
+        <form action="/add" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">First Name</label>
+                <input type="text" name="first_name" required placeholder="e.g. Brock" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Last Name</label>
+                <input type="text" name="last_name" required placeholder="e.g. Lesnar" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Corporate Email</label>
+                <input type="email" name="email" required placeholder="username@corporate.local" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Lifecycle Status State</label>
+                <select name="status" class="w-full bg-gray-700 border border-gray-600 rounded p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                    <option value="ACTIVE">🟢 ACTIVE (Trigger Onboarding)</option>
+                    <option value="INACTIVE">🟡 INACTIVE (Hold Account)</option>
+                    <option value="TERMINATED">🔴 TERMINATED (Trigger Revocation)</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded transition duration-200 mt-2 cursor-pointer shadow-lg shadow-indigo-600/20 text-sm">
+                Commit to Source Database
+            </button>
+        </form>
+    </div>
+
+    <!-- Live Directory Table Card -->
+    <div class="max-w-4xl w-full bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-300 mb-4 flex items-center space-x-2">
+            <span>📋</span> <span>Authoritative Employee Directory Ledger</span>
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-400">
+                <thead class="text-xs uppercase bg-gray-700 text-gray-300 tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3">Emp ID</th>
+                        <th class="px-4 py-3">Full Name</th>
+                        <th class="px-4 py-3">Email Address</th>
+                        <th class="px-4 py-3">Lifecycle Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    {% for emp in employees %}
+                    <tr class="hover:bg-gray-700/50 transition">
+                        <td class="px-4 py-3 font-mono text-indigo-400 font-semibold">#{{ emp[0] }}</td>
+                        <td class="px-4 py-3 text-white font-medium">{{ emp[1] }} {{ emp[2] }}</td>
+                        <td class="px-4 py-3">{{ emp[3] }}</td>
+                        <td class="px-4 py-3">
+                            {% if emp[4] == 'ACTIVE' %}
+                            <span class="px-2 py-1 bg-green-900/40 text-green-400 border border-green-500/30 rounded text-xs font-semibold">ACTIVE</span>
+                            {% elif emp[4] == 'INACTIVE' %}
+                            <span class="px-2 py-1 bg-yellow-900/40 text-yellow-400 border border-yellow-500/30 rounded text-xs font-semibold">INACTIVE</span>
+                            {% else %}
+                            <span class="px-2 py-1 bg-red-900/40 text-red-400 border border-red-500/30 rounded text-xs font-semibold">TERMINATED</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-500 italic">No identity records found in database truth layer.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
