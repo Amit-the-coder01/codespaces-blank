@@ -30,15 +30,16 @@ services:
       LDAP_TLS_CRT_FILENAME: ldap.crt
       LDAP_TLS_KEY_FILENAME: ldap.key
       LDAP_TLS_CA_CRT_FILENAME: ca.crt
+      LDAP_TLS_VERIFY_CLIENT: never
     ports:
       - "389:389"
       - "636:636"
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
-     # - ./certs/ldap.crt:/container/service/slapd/assets/certs/ldap.crt
-     # - ./certs/ldap.key:/container/service/slapd/assets/certs/ldap.key
-     # - ./certs/ca.crt:/container/service/slapd/assets/certs/ca.crt
+      - ./ldap.crt:/container/service/slapd/assets/certs/ldap.crt
+      - ./ldap.key:/container/service/slapd/assets/certs/ldap.key
+      - ./ca.crt:/container/service/slapd/assets/certs/ca.crt
     networks:
       - iam-network
 
